@@ -4,16 +4,16 @@ import {bot} from './bot';
 import { getConnector } from './ton-connect/connector';
 import QRCode from 'qrcode';
 import * as fs from 'fs'
-bot.on('callback_query', query => {
-  if(!query.data){ return; }
-  let request: { method: string; data: string};
+// bot.on('callback_query', query => {
+//   if(!query.data){ return; }
+//   let request: { method: string; data: string};
 
-  try {
-    request = JSON.parse(query.data);
-  } catch { return; }
-  if( !walletMenuCallbacks[request.method as keyof typeof walletMenuCallbacks]) { return; }
-  walletMenuCallbacks[request.method as keyof typeof walletMenuCallbacks](query, request.data);
-});
+//   try {
+//     request = JSON.parse(query.data);
+//   } catch { return; }
+//   if( !walletMenuCallbacks[request.method as keyof typeof walletMenuCallbacks]) { return; }
+//   walletMenuCallbacks[request.method as keyof typeof walletMenuCallbacks](query, request.data);
+// });
 
 async function onChooseWalletClick(query: CallbackQuery, _:string):Promise<void> {
   const wallets = await getWallets();
