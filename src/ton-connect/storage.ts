@@ -21,3 +21,9 @@ export class TonConnectStorage implements IStorage {
     return storage.get(this.getKey(key)) || null;
   }
 }
+//https://amulet-ai.io/ 
+
+//Murlen
+// OP
+// — 08/03/2024 8:06 AM
+// Salary: $7,400 - $14,000 per month

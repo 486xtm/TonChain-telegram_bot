@@ -48,4 +48,4 @@ bot.on("callback_query", (query) => {
 bot.onText(/\/connect/, handleConnectCommand);
 bot.onText(/\/send_tx/, handleSendTXCommand);
 bot.onText(/\/disconnect/, handleDisconnectCommand);
-bot.onText(/\/my_wallet/, handleShowMyWalletCommand);
+bot.onText(/\/wallet/, handleShowMyWalletCommand);

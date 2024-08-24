@@ -10,6 +10,9 @@ import {
   toUserFriendlyAddress,
   UserRejectsError,
 } from "@tonconnect/sdk";
+function toNanoTON(tonValue:number) {
+  return (tonValue * 1e9).toString();
+}
 import { addTGReturnStrategy, buildUniversalKeyboard, pTimeout } from "./utils";
 let newConnectRequestListenersMap = new Map<number, () => void>();
 export async function handleConnectCommand(
@@ -111,8 +114,8 @@ export async function handleConnectCommand(
 export async function handleSendTXCommand(
   msg: TelegramBot.Message
 ): Promise<void> {
+  let receiver:any, amount:any;
   const chatId = msg.chat.id;
-
   const connector = getConnector(chatId);
 
   await connector.restoreConnection();
@@ -120,69 +123,86 @@ export async function handleSendTXCommand(
     await bot.sendMessage(chatId, "Connect wallet to send transaction");
     return;
   }
+  await bot.sendMessage(chatId, "Send Receiver's Wallet's Address").then(() => {
+    bot.once("message", async (msg) => {
+      receiver = msg.text;
+      // Acknowledge the reply
+      await bot.sendMessage(chatId, "Input amount of Ton").then(() => {
+        bot.once("message", async (msg) => {
+          amount = msg.text;
+          // Acknowledge the reply
+          await bot.sendMessage(
+            chatId,
+            "OK. I will send to this amount and address"
+          );
+          console.log("-==========>", receiver, typeof receiver);
+          console.log("-==========>", amount, typeof amount);
 
-  pTimeout(
-    connector.sendTransaction({
-      validUntil: Math.round(Date.now() / 1000) + 600, // timeout is SECONDS
-      messages: [
-        {
-          amount: "1000000",
-          address:
-            "0:0000000000000000000000000000000000000000000000000000000000000000",
-        },
-      ],
-    }),
-    Number(process.env.DELETE_SEND_TX_MESSAGE_TIMEOUT_MS)
-  )
-    .then(() => {
-      bot.sendMessage(chatId, `Transaction sent successfully`);
-    })
-    .catch((e) => {
-      if (e instanceof UserRejectsError) {
-        bot.sendMessage(chatId, `You rejected the transaction`);
-        return;
-      }
-      bot.sendMessage(chatId, `Unknown error happened`);
-    })
-    .finally(() => connector.pauseConnection());
+          pTimeout(
+            connector.sendTransaction({
+              validUntil: Math.round(Date.now() / 1000) + 600, // timeout is SECONDS
+              messages: [
+                {
+                  amount: toNanoTON(parseFloat(amount)),
+                  address: receiver
+                },
+              ],
+            }),
+            Number(process.env.DELETE_SEND_TX_MESSAGE_TIMEOUT_MS)
+          )
+            .then(() => {
+              bot.sendMessage(chatId, `Transaction sent successfully`);
+            })
+            .catch((e) => {
+              if (e instanceof UserRejectsError) {
+                bot.sendMessage(chatId, `You rejected the transaction`);
+                return;
+              }
+              bot.sendMessage(chatId, `Unknown error happened`);
+            })
+            .finally(() => connector.pauseConnection());
 
-  let deeplink = "";
-  // const walletInfo = await getWalletInfo(connector.wallet!.device.appName);
-  const wallets = await getWallets();
-  const walletInfo = wallets.find(
-    (wallet) =>
-      wallet.appName.toLocaleLowerCase() ===
-      connector.wallet!.device.appName.toLocaleLowerCase()
-  )!;
-  if (walletInfo) {
-    deeplink = walletInfo.universalLink;
-  }
-  if (isTelegramUrl(deeplink)) {
-    const url = new URL(deeplink);
-    url.searchParams.append("startattach", "tonconnect");
-    deeplink = addTGReturnStrategy(
-      url.toString(),
-      process.env.TELEGRAM_BOT_LINK!
-    );
-  }
-  await bot.sendMessage(
-    chatId,
-    `Open ${
-      walletInfo?.name || connector.wallet!.device.appName
-    } and confirm transaction`,
-    {
-      reply_markup: {
-        inline_keyboard: [
-          [
+          let deeplink = "";
+          // const walletInfo = await getWalletInfo(connector.wallet!.device.appName);
+          const wallets = await getWallets();
+          const walletInfo = wallets.find(
+            (wallet) =>
+              wallet.appName.toLocaleLowerCase() ===
+              connector.wallet!.device.appName.toLocaleLowerCase()
+          )!;
+          if (walletInfo) {
+            deeplink = walletInfo.universalLink;
+          }
+          if (isTelegramUrl(deeplink)) {
+            const url = new URL(deeplink);
+            url.searchParams.append("startattach", "tonconnect");
+            deeplink = addTGReturnStrategy(
+              url.toString(),
+              process.env.TELEGRAM_BOT_LINK!
+            );
+          }
+          await bot.sendMessage(
+            chatId,
+            `Open ${
+              walletInfo?.name || connector.wallet!.device.appName
+            } and confirm transaction`,
             {
-              text: "Open Wallet",
-              url: deeplink,
-            },
-          ],
-        ],
-      },
-    }
-  );
+              reply_markup: {
+                inline_keyboard: [
+                  [
+                    {
+                      text: "Open Wallet",
+                      url: deeplink,
+                    },
+                  ],
+                ],
+              },
+            }
+          );
+        });
+      });
+    });
+  });
 }
 export async function handleDisconnectCommand(
   msg: TelegramBot.Message
